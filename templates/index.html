@@ -64,7 +64,7 @@
         border-collapse: separate;
         border-spacing: 0;
         width: 100%;
-        min-width: 1180px;
+        min-width: 1080px;
       }
 
       thead th {
@@ -81,7 +81,7 @@
         border-bottom: 1px solid #edf0f2;
         font-size: 14px;
         padding: 9px 8px;
-        text-align: right;
+        text-align: center;
         white-space: nowrap;
       }
 
@@ -93,19 +93,10 @@
         box-shadow: inset 0 1px 0 var(--border);
       }
 
-      tbody tr.group-start td:nth-child(2) {
+      tbody tr.group-start td:first-child {
         border-left: 4px solid var(--blue);
         color: #0b5ed7;
         font-weight: 700;
-      }
-
-      tbody td:nth-child(1),
-      tbody td:nth-child(2),
-      tbody td:nth-child(3),
-      tbody td:nth-child(9),
-      tbody td:nth-child(10),
-      tbody td:nth-child(11) {
-        text-align: center;
       }
 
       .expiry-badge {
@@ -138,20 +129,22 @@
 
       .percentile-bar {
         --percentile: 0;
-        --bar-color: #cfe1ff;
+        --bar-color: #cfe8ff;
         background:
           linear-gradient(
             90deg,
             var(--bar-color) 0%,
             var(--bar-color) calc(var(--percentile) * 1%),
-            #f8fbff calc(var(--percentile) * 1%),
-            #f8fbff 100%
+            #f1f4f9 calc(var(--percentile) * 1%),
+            #f1f4f9 100%
           );
-        border: 1px solid #d7e6ff;
+        border: 1px solid #c5ced9;
         border-radius: 6px;
-        color: #172033;
+        color: #152238;
         display: inline-block;
-        font-weight: 700;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
         min-width: 68px;
         padding: 4px 8px;
       }
@@ -351,7 +344,6 @@
             <thead>
               <tr>
                 <th>时间戳</th>
-                <th>品种</th>
                 <th>合约</th>
                 <th>期货价格</th>
                 <th>现货价格</th>
@@ -503,14 +495,28 @@
         return classMap[expiryType] || "expiry-front";
       }
 
+      /** 0% 浅蓝 → 100% 浅红，便于深色文字对比 */
+      function percentileColdToWarmColor(percentile) {
+        const t = Math.max(0, Math.min(100, Number(percentile))) / 100;
+        const r0 = 198;
+        const g0 = 228;
+        const b0 = 255;
+        const r1 = 255;
+        const g1 = 198;
+        const b1 = 205;
+        const r = Math.round(r0 + (r1 - r0) * t);
+        const g = Math.round(g0 + (g1 - g0) * t);
+        const b = Math.round(b0 + (b1 - b0) * t);
+        return `rgb(${r},${g},${b})`;
+      }
+
       function percentileCell(value) {
         if (value === null || value === undefined || Number.isNaN(value)) {
           return "";
         }
 
         const percentile = Math.max(0, Math.min(100, Number(value)));
-        const lightness = 92 - percentile * 0.34;
-        const barColor = `hsl(214, 92%, ${lightness}%)`;
+        const barColor = percentileColdToWarmColor(percentile);
         return `
           <span
             class="percentile-bar"
@@ -537,7 +543,6 @@
           }
           tr.innerHTML = `
             <td>${formatValue(row.timestamp)}</td>
-            <td>${formatValue(row.underlying)}</td>
             <td>${formatValue(row.contract)}</td>
             <td>${formatValue(row.future_price)}</td>
             <td>${formatValue(row.spot_price)}</td>
