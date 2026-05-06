@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Index Futures Basis Rate Monitor</title>
+    <style>
+      :root {
+        --blue: #1473f9;
+        --border: #d8dee4;
+        --header: #343a40;
+        --page: #f3f3f3;
+        --text: #24292f;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+        font-family: Arial, "Microsoft YaHei", sans-serif;
+      }
+
+      .topbar {
+        background: var(--blue);
+        color: #fff;
+        font-size: 20px;
+        font-weight: 700;
+        padding: 16px 14px;
+      }
+
+      .container {
+        width: min(1600px, calc(100vw - 32px));
+        max-width: none;
+        margin: 26px auto;
+        padding: 0;
+      }
+
+      .card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(27, 31, 36, 0.12);
+        margin-bottom: 26px;
+        overflow: hidden;
+      }
+
+      .card-title {
+        border-bottom: 1px solid var(--border);
+        font-size: 22px;
+        font-weight: 700;
+        padding: 14px 18px;
+      }
+
+      .table-wrap {
+        padding: 16px 18px 34px;
+        overflow-x: auto;
+      }
+
+      table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        min-width: 1180px;
+      }
+
+      thead th {
+        background: var(--header);
+        color: #fff;
+        font-size: 16px;
+        line-height: 1.5;
+        padding: 10px 8px;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      tbody td {
+        border-bottom: 1px solid #edf0f2;
+        font-size: 14px;
+        padding: 9px 8px;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      tbody tr.group-start:not(:first-child) td {
+        border-top: 14px solid #f3f3f3;
+      }
+
+      tbody tr.group-start td {
+        box-shadow: inset 0 1px 0 var(--border);
+      }
+
+      tbody tr.group-start td:nth-child(2) {
+        border-left: 4px solid var(--blue);
+        color: #0b5ed7;
+        font-weight: 700;
+      }
+
+      tbody td:nth-child(1),
+      tbody td:nth-child(2),
+      tbody td:nth-child(3),
+      tbody td:nth-child(9),
+      tbody td:nth-child(10),
+      tbody td:nth-child(11) {
+        text-align: center;
+      }
+
+      .expiry-badge {
+        border-radius: 999px;
+        display: inline-block;
+        font-weight: 700;
+        min-width: 56px;
+        padding: 4px 10px;
+      }
+
+      .expiry-front {
+        background: #e8f1ff;
+        color: #1558b0;
+      }
+
+      .expiry-next {
+        background: #cfe1ff;
+        color: #114a99;
+      }
+
+      .expiry-quarter {
+        background: #9fc2ff;
+        color: #0a3b82;
+      }
+
+      .expiry-next-quarter {
+        background: #5f95f2;
+        color: #fff;
+      }
+
+      .percentile-bar {
+        --percentile: 0;
+        --bar-color: #cfe1ff;
+        background:
+          linear-gradient(
+            90deg,
+            var(--bar-color) 0%,
+            var(--bar-color) calc(var(--percentile) * 1%),
+            #f8fbff calc(var(--percentile) * 1%),
+            #f8fbff 100%
+          );
+        border: 1px solid #d7e6ff;
+        border-radius: 6px;
+        color: #172033;
+        display: inline-block;
+        font-weight: 700;
+        min-width: 68px;
+        padding: 4px 8px;
+      }
+
+      .empty,
+      .error {
+        color: #6a737d;
+        padding: 16px 0 0;
+        text-align: center;
+      }
+
+      .error {
+        color: #b42318;
+      }
+
+      .status-line {
+        color: #6a737d;
+        font-size: 13px;
+        margin-top: 10px;
+        text-align: right;
+      }
+
+      .analysis-body {
+        padding: 42px 26px 34px;
+      }
+
+      .control-panel {
+        background: #f8fafc;
+        border: 1px solid #dce3ea;
+        border-radius: 6px;
+        margin: 0 auto 24px;
+        max-width: 1120px;
+        padding: 16px;
+      }
+
+      .control-row {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .control-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .control-label {
+        font-weight: 700;
+        min-width: 110px;
+        text-align: right;
+      }
+
+      select,
+      input[type="date"] {
+        background: #fff;
+        border: 1px solid #d8dee4;
+        border-radius: 5px;
+        color: var(--text);
+        font: inherit;
+        padding: 7px 10px;
+      }
+
+      .button-group {
+        display: inline-flex;
+        flex-wrap: wrap;
+      }
+
+      .range-button,
+      .mode-button,
+      .apply-button {
+        background: #fff;
+        border: 1px solid #adb5bd;
+        color: #6c757d;
+        cursor: pointer;
+        font: inherit;
+        padding: 7px 10px;
+      }
+
+      .range-button:first-child,
+      .mode-button:first-child {
+        border-bottom-left-radius: 5px;
+        border-top-left-radius: 5px;
+      }
+
+      .range-button:last-child,
+      .mode-button:last-child {
+        border-bottom-right-radius: 5px;
+        border-top-right-radius: 5px;
+      }
+
+      .range-button.active,
+      .mode-button.active,
+      .apply-button {
+        background: #6c757d;
+        color: #fff;
+      }
+
+      .mode-button:disabled {
+        background: #f1f3f5;
+        color: #adb5bd;
+        cursor: not-allowed;
+      }
+
+      .custom-range {
+        display: none;
+      }
+
+      .custom-range.visible {
+        display: flex;
+      }
+
+      .daily-controls.hidden {
+        display: none;
+      }
+
+      .chart-panel {
+        min-height: 420px;
+        position: relative;
+      }
+
+      .chart-stack {
+        position: relative;
+        transition: opacity 0.2s ease, filter 0.2s ease;
+      }
+
+      .chart-stack.is-loading {
+        filter: blur(1px);
+        opacity: 0.38;
+        pointer-events: none;
+      }
+
+      .history-chart {
+        height: 420px;
+        margin-top: 18px;
+        width: 100%;
+      }
+
+      .history-chart:first-child {
+        margin-top: 0;
+      }
+
+      .daily-chart-stack.hidden,
+      .intraday-chart-stack.hidden {
+        display: none;
+      }
+
+      .history-message {
+        color: #6a737d;
+        margin-top: 12px;
+        text-align: center;
+      }
+
+      .loading-overlay {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.72);
+        border-radius: 8px;
+        color: #495057;
+        display: none;
+        flex-direction: column;
+        font-weight: 700;
+        gap: 10px;
+        inset: 0;
+        justify-content: center;
+        position: absolute;
+        z-index: 5;
+      }
+
+      .chart-panel.is-loading .loading-overlay {
+        display: flex;
+      }
+
+      .loading-spinner {
+        animation: spin 0.9s linear infinite;
+        border: 4px solid #dbeafe;
+        border-top-color: var(--blue);
+        border-radius: 50%;
+        height: 38px;
+        width: 38px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">Index Futures Basis Rate Monitor</header>
+
+    <main class="container">
+      <section class="card">
+        <div class="card-title">Latest Basis Rates</div>
+        <div class="table-wrap">
+          <table aria-label="Latest Basis Rates">
+            <thead>
+              <tr>
+                <th>时间戳</th>
+                <th>品种</th>
+                <th>合约</th>
+                <th>期货价格</th>
+                <th>现货价格</th>
+                <th>基差</th>
+                <th>到期天数</th>
+                <th>年化基差率</th>
+                <th>到期类型</th>
+                <th>过去一年分位数</th>
+                <th>全历史分位数</th>
+              </tr>
+            </thead>
+            <tbody id="latest-rows"></tbody>
+          </table>
+          <div id="table-message" class="empty">Loading latest data...</div>
+          <div id="refresh-status" class="status-line"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">Historical Basis Rate Analysis</div>
+        <div class="analysis-body">
+          <div class="control-panel">
+            <div class="control-row">
+              <span class="control-label">Commodity:</span>
+              <select id="history-underlying">
+                <option value="IF">沪深300 (IF)</option>
+                <option value="IH">上证50 (IH)</option>
+                <option value="IC">中证500 (IC)</option>
+                <option value="IM" selected>中证1000 (IM)</option>
+              </select>
+            </div>
+            <div class="control-row">
+              <span class="control-label">Contract Type:</span>
+              <select id="history-future-type">
+                <option value="front_month">近月</option>
+                <option value="next_month" selected>次近月</option>
+                <option value="current_quarter">季月</option>
+                <option value="next_quarter">次季月</option>
+              </select>
+            </div>
+            <div class="control-row">
+              <span class="control-label"></span>
+              <div class="button-group" aria-label="Frequency">
+                <button class="mode-button active" type="button" data-mode="daily">日度</button>
+                <button class="mode-button" type="button" data-mode="intraday">分时</button>
+              </div>
+            </div>
+            <div class="control-row daily-controls">
+              <span class="control-label">Date Range:</span>
+              <div class="button-group" id="date-range-buttons">
+                <button class="range-button active" type="button" data-range="last-year">自去年年初</button>
+                <button class="range-button" type="button" data-range="covid">自疫情 (2020)</button>
+                <button class="range-button" type="button" data-range="2015">自15年市场波动</button>
+                <button class="range-button" type="button" data-range="2010">自2010年</button>
+                <button class="range-button" type="button" data-range="custom">自定义</button>
+              </div>
+            </div>
+            <div class="control-row custom-range daily-controls" id="custom-range-row">
+              <span class="control-label">开始日期:</span>
+              <input id="history-start-date" type="date">
+              <span class="control-label">结束日期:</span>
+              <input id="history-end-date" type="date">
+              <button class="apply-button" id="apply-history-range" type="button">应用</button>
+            </div>
+          </div>
+
+          <div class="chart-panel" id="history-chart-panel">
+            <div class="loading-overlay" id="history-loading-overlay" aria-live="polite">
+              <div class="loading-spinner"></div>
+              <div>正在计算图表数据...</div>
+            </div>
+            <div class="chart-stack daily-chart-stack" id="history-chart-stack">
+              <div id="history-main-chart" class="history-chart" role="img" aria-label="Historical Basis Rate and Underlying Price chart"></div>
+              <div id="history-distribution-chart" class="history-chart" role="img" aria-label="Basis Rate distribution chart"></div>
+              <div id="history-percentile-chart" class="history-chart" role="img" aria-label="Basis Rate percentile chart"></div>
+            </div>
+            <div class="chart-stack intraday-chart-stack hidden" id="intraday-chart-stack">
+              <div id="intraday-chart" class="history-chart" role="img" aria-label="Intraday Basis Rate chart"></div>
+            </div>
+            <div id="history-message" class="history-message">Loading historical data...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script>
+      const rowsElement = document.getElementById("latest-rows");
+      const messageElement = document.getElementById("table-message");
+      const statusElement = document.getElementById("refresh-status");
+      const historyUnderlyingElement = document.getElementById("history-underlying");
+      const historyFutureTypeElement = document.getElementById("history-future-type");
+      const historyChartPanelElement = document.getElementById("history-chart-panel");
+      const historyChartStackElement = document.getElementById("history-chart-stack");
+      const intradayChartStackElement = document.getElementById("intraday-chart-stack");
+      const intradayChartElement = document.getElementById("intraday-chart");
+      const historyMainChartElement = document.getElementById("history-main-chart");
+      const historyDistributionChartElement = document.getElementById("history-distribution-chart");
+      const historyPercentileChartElement = document.getElementById("history-percentile-chart");
+      const historyMessageElement = document.getElementById("history-message");
+      const customRangeRowElement = document.getElementById("custom-range-row");
+      const historyStartDateElement = document.getElementById("history-start-date");
+      const historyEndDateElement = document.getElementById("history-end-date");
+      const applyHistoryRangeElement = document.getElementById("apply-history-range");
+      const dateRangeButtonElements = document.querySelectorAll(".range-button");
+      const modeButtonElements = document.querySelectorAll(".mode-button");
+      const dailyControlElements = document.querySelectorAll(".daily-controls");
+      let activeDateRange = "last-year";
+      let activeMode = "daily";
+      let intradayTimer = null;
+      let latestRefreshLabel = "";
+
+      function formatValue(value, suffix = "") {
+        if (value === null || value === undefined || Number.isNaN(value)) {
+          return "";
+        }
+        return `${value}${suffix}`;
+      }
+
+      function isTradingSession(now = new Date()) {
+        const minutes = now.getHours() * 60 + now.getMinutes();
+        return (
+          (minutes >= 9 * 60 + 25 && minutes <= 11 * 60 + 30)
+          || (minutes >= 13 * 60 && minutes <= 15 * 60)
+        );
+      }
+
+      function tradingPauseMessage(target) {
+        return `非交易时段（09:25-11:30, 13:00-15:00），${target}自动刷新已暂停。`;
+      }
+
+      function formatLatestStatusLine() {
+        if (!latestRefreshLabel) {
+          return "";
+        }
+        if (isTradingSession()) {
+          return latestRefreshLabel;
+        }
+        return `${latestRefreshLabel} · ${tradingPauseMessage("Latest Basis Rates")}`;
+      }
+
+      function expiryClass(expiryType) {
+        const classMap = {
+          "近月": "expiry-front",
+          "次近月": "expiry-next",
+          "季月": "expiry-quarter",
+          "次季月": "expiry-next-quarter",
+        };
+        return classMap[expiryType] || "expiry-front";
+      }
+
+      function percentileCell(value) {
+        if (value === null || value === undefined || Number.isNaN(value)) {
+          return "";
+        }
+
+        const percentile = Math.max(0, Math.min(100, Number(value)));
+        const lightness = 92 - percentile * 0.34;
+        const barColor = `hsl(214, 92%, ${lightness}%)`;
+        return `
+          <span
+            class="percentile-bar"
+            style="--percentile: ${percentile}; --bar-color: ${barColor};"
+          >${Math.round(percentile)}%</span>
+        `;
+      }
+
+      function renderRows(rows) {
+        rowsElement.innerHTML = "";
+
+        if (!rows.length) {
+          messageElement.className = "empty";
+          messageElement.textContent = "No latest data available.";
+          return;
+        }
+
+        messageElement.textContent = "";
+        let previousUnderlying = null;
+        rows.forEach((row) => {
+          const tr = document.createElement("tr");
+          if (row.underlying !== previousUnderlying) {
+            tr.classList.add("group-start");
+          }
+          tr.innerHTML = `
+            <td>${formatValue(row.timestamp)}</td>
+            <td>${formatValue(row.underlying)}</td>
+            <td>${formatValue(row.contract)}</td>
+            <td>${formatValue(row.future_price)}</td>
+            <td>${formatValue(row.spot_price)}</td>
+            <td>${formatValue(row.basis)}</td>
+            <td>${formatValue(row.days_to_expiry)}</td>
+            <td>${formatValue(row.annual_basis_rate, "%")}</td>
+            <td><span class="expiry-badge ${expiryClass(row.expiry_type)}">${formatValue(row.expiry_type)}</span></td>
+            <td>${percentileCell(row.one_year_percentile)}</td>
+            <td>${percentileCell(row.all_history_percentile)}</td>
+          `;
+          rowsElement.appendChild(tr);
+          previousUnderlying = row.underlying;
+        });
+      }
+
+      function dateRange(rangeKey) {
+        const today = new Date();
+        const endDate = today.toISOString().slice(0, 10);
+        const year = today.getFullYear();
+        const ranges = {
+          "last-year": [`${year - 1}-01-01`, endDate],
+          covid: ["2020-01-01", endDate],
+          2015: ["2015-01-01", endDate],
+          2010: ["2010-01-01", endDate],
+        };
+        return ranges[rangeKey] || [historyStartDateElement.value, historyEndDateElement.value];
+      }
+
+      function purgeHistoryCharts() {
+        Plotly.purge(historyMainChartElement);
+        Plotly.purge(historyDistributionChartElement);
+        Plotly.purge(historyPercentileChartElement);
+        Plotly.purge(intradayChartElement);
+      }
+
+      function setHistoryLoading(isLoading) {
+        historyChartPanelElement.classList.toggle("is-loading", isLoading);
+        const activeStack = activeMode === "daily" ? historyChartStackElement : intradayChartStackElement;
+        activeStack.classList.toggle("is-loading", isLoading);
+      }
+
+      function percentileSeries(values) {
+        return values.map((value) => {
+          const lowerOrEqualCount = values.filter((item) => item <= value).length;
+          return Math.round(lowerOrEqualCount / values.length * 100);
+        });
+      }
+
+      function rollingPercentileSeries(rows, windowDays = 365) {
+        return rows.map((row, index) => {
+          const currentDate = new Date(row.date);
+          const windowStart = new Date(currentDate);
+          windowStart.setDate(windowStart.getDate() - windowDays);
+          const windowValues = rows
+            .slice(0, index + 1)
+            .filter((item) => {
+              const itemDate = new Date(item.date);
+              return itemDate >= windowStart && itemDate <= currentDate;
+            })
+            .map((item) => item.basis_annual_rate);
+          const lowerOrEqualCount = windowValues.filter((value) => value <= row.basis_annual_rate).length;
+          return Math.round(lowerOrEqualCount / windowValues.length * 100);
+        });
+      }
+
+      function plotlyBaseConfig() {
+        return {
+          responsive: true,
+          displaylogo: false,
+          modeBarButtonsToRemove: ["lasso2d", "select2d"],
+        };
+      }
+
+      function plotlyBaseLayout(titleText) {
+        return {
+          title: {
+            text: titleText,
+            x: 0.5,
+            xanchor: "center",
+            y: 0.98,
+            yanchor: "top",
+            font: {
+              size: 16,
+              color: "#24292f",
+            },
+          },
+          margin: {
+            l: 70,
+            r: 70,
+            t: 82,
+            b: 58,
+          },
+          paper_bgcolor: "#fff",
+          plot_bgcolor: "#fff",
+          hovermode: "x unified",
+          font: {
+            family: "Arial, Microsoft YaHei, sans-serif",
+          },
+          legend: {
+            orientation: "h",
+            x: 0.5,
+            xanchor: "center",
+            y: 1.03,
+            yanchor: "bottom",
+          },
+        };
+      }
+
+      function renderHistoryCharts(rows) {
+        if (!rows.length) {
+          purgeHistoryCharts();
+          historyMessageElement.textContent = "No historical data available for the selected filters.";
+          return;
+        }
+
+        historyMessageElement.textContent = "";
+        const dates = rows.map((row) => row.date);
+        const basisRates = rows.map((row) => row.basis_annual_rate);
+        const underlyingPrices = rows.map((row) => row.underlying_price);
+        const rollingPercentiles = rows.map((row) => row.rolling_percentile_1y);
+        const allHistoryPercentiles = rows.map((row) => row.all_history_percentile);
+        const config = plotlyBaseConfig();
+
+        const basisTrace = {
+          x: dates,
+          y: basisRates,
+          type: "scatter",
+          mode: "lines",
+          name: "Historical Basis Rate",
+          hovertemplate: "%{x}<br>Historical Basis Rate: %{y:.2f}%<extra></extra>",
+          line: {
+            color: "#1473f9",
+            width: 2,
+          },
+          fill: "tozeroy",
+          fillcolor: "rgba(20, 115, 249, 0.14)",
+        };
+        const priceTrace = {
+          x: dates,
+          y: underlyingPrices,
+          type: "scatter",
+          mode: "lines",
+          name: "Underlying Price",
+          yaxis: "y2",
+          hovertemplate: "%{x}<br>Underlying Price: %{y:.2f}<extra></extra>",
+          line: {
+            color: "#6c757d",
+            width: 1.8,
+          },
+        };
+        const mainLayout = {
+          ...plotlyBaseLayout("Historical Basis Rate & Underlying Price"),
+          xaxis: {
+            type: "date",
+            showgrid: true,
+            gridcolor: "#edf0f2",
+            zeroline: false,
+            tickfont: {
+              color: "#6a737d",
+            },
+            rangeslider: {
+              visible: false,
+            },
+          },
+          yaxis: {
+            title: {
+              text: "Historical Basis Rate (%)",
+              font: {
+                color: "#6a737d",
+              },
+            },
+            ticksuffix: "%",
+            showgrid: true,
+            gridcolor: "#edf0f2",
+            zeroline: true,
+            zerolinecolor: "#d8dee4",
+            tickfont: {
+              color: "#6a737d",
+            },
+          },
+          yaxis2: {
+            title: {
+              text: "Underlying Price",
+              font: {
+                color: "#6a737d",
+              },
+            },
+            overlaying: "y",
+            side: "right",
+            showgrid: false,
+            zeroline: false,
+            tickfont: {
+              color: "#6a737d",
+            },
+          },
+        };
+
+        const rollingPercentileLayout = {
+          ...plotlyBaseLayout("1-Year Rolling Percentile"),
+          showlegend: false,
+          xaxis: {
+            type: "date",
+            showgrid: true,
+            gridcolor: "#edf0f2",
+            zeroline: false,
+          },
+          yaxis: {
+            title: "Percentile",
+            range: [0, 100],
+            ticksuffix: "%",
+            showgrid: true,
+            gridcolor: "#edf0f2",
+            zeroline: false,
+          },
+        };
+        const percentileLayout = {
+          ...plotlyBaseLayout("All-History Percentile"),
+          yaxis: {
+            title: "Percentile",
+            range: [0, 100],
+            ticksuffix: "%",
+            showgrid: true,
+            gridcolor: "#edf0f2",
+            zeroline: false,
+          },
+          xaxis: {
+            type: "date",
+            showgrid: true,
+            gridcolor: "#edf0f2",
+            zeroline: false,
+          },
+          showlegend: false,
+        };
+
+        Plotly.newPlot(historyMainChartElement, [basisTrace, priceTrace], mainLayout, config);
+        Plotly.newPlot(historyDistributionChartElement, [{
+          x: dates,
+          y: rollingPercentiles,
+          type: "scatter",
+          mode: "lines",
+          name: "1-Year Rolling Percentile",
+          fill: "tozeroy",
+          hovertemplate: "%{x}<br>1-Year Rolling Percentile: %{y:.0f}%<extra></extra>",
+          line: {
+            color: "#1473f9",
+            width: 2,
+          },
+          fillcolor: "rgba(20, 115, 249, 0.14)",
+        }], rollingPercentileLayout, config);
+
+        Plotly.newPlot(historyPercentileChartElement, [{
+          x: dates,
+          y: allHistoryPercentiles,
+          type: "scatter",
+          mode: "lines",
+          name: "All-History Percentile",
+          fill: "tozeroy",
+          hovertemplate: "%{x}<br>All-History Percentile: %{y:.0f}%<extra></extra>",
+          line: {
+            color: "#1473f9",
+            width: 2,
+          },
+          fillcolor: "rgba(20, 115, 249, 0.14)",
+        }], percentileLayout, config);
+      }
+
+      function renderIntradayChart(rows) {
+        if (!rows.length) {
+          Plotly.purge(intradayChartElement);
+          historyMessageElement.textContent = "等待实时 tick 数据...";
+          return;
+        }
+
+        historyMessageElement.textContent = "";
+        const dates = rows.map((row) => row.timestamp);
+        const basisRates = rows.map((row) => row.basis_rate);
+        const layout = {
+          ...plotlyBaseLayout("Intraday Basis Rate"),
+          showlegend: false,
+          xaxis: {
+            type: "date",
+            showgrid: true,
+            gridcolor: "#edf0f2",
+            zeroline: false,
+          },
+          yaxis: {
+            title: "Basis Rate (%)",
+            ticksuffix: "%",
+            showgrid: true,
+            gridcolor: "#edf0f2",
+            zeroline: true,
+            zerolinecolor: "#d8dee4",
+          },
+        };
+        Plotly.newPlot(intradayChartElement, [{
+          x: dates,
+          y: basisRates,
+          type: "scatter",
+          mode: "lines",
+          name: "Intraday Basis Rate",
+          hovertemplate: "%{x}<br>Basis Rate: %{y:.4f}%<extra></extra>",
+          line: {
+            color: "#1473f9",
+            width: 2,
+          },
+          fill: "tozeroy",
+          fillcolor: "rgba(20, 115, 249, 0.14)",
+        }], layout, plotlyBaseConfig());
+      }
+
+      async function fetchIntradayBasisRates(showLoading = false) {
+        if (!isTradingSession()) {
+          Plotly.purge(intradayChartElement);
+          historyMessageElement.textContent = tradingPauseMessage("分时图");
+          return;
+        }
+
+        const params = new URLSearchParams({
+          underlying: historyUnderlyingElement.value,
+          future_type: historyFutureTypeElement.value,
+        });
+
+        if (showLoading) {
+          historyMessageElement.textContent = "正在订阅并接收实时 tick 数据...";
+          setHistoryLoading(true);
+        }
+        try {
+          const response = await fetch(`/api/intraday?${params.toString()}`);
+          const payload = await response.json();
+          if (!response.ok || payload.status === "error") {
+            throw new Error(payload.message || "Failed to fetch intraday data.");
+          }
+          renderIntradayChart(payload.rows);
+          if (payload.status !== "ok") {
+            historyMessageElement.textContent = payload.message || "实时行情暂不可用。";
+          }
+        } catch (error) {
+          Plotly.purge(intradayChartElement);
+          historyMessageElement.textContent = error.message;
+        } finally {
+          if (showLoading) {
+            setHistoryLoading(false);
+          }
+        }
+      }
+
+      function startIntradayPolling() {
+        if (intradayTimer !== null) {
+          clearInterval(intradayTimer);
+        }
+        if (!isTradingSession()) {
+          Plotly.purge(intradayChartElement);
+          historyMessageElement.textContent = tradingPauseMessage("分时图");
+          return;
+        }
+        fetchIntradayBasisRates(true);
+        intradayTimer = setInterval(() => fetchIntradayBasisRates(false), 3000);
+      }
+
+      function stopIntradayPolling() {
+        if (intradayTimer !== null) {
+          clearInterval(intradayTimer);
+          intradayTimer = null;
+        }
+      }
+
+      function setAnalysisMode(mode) {
+        activeMode = mode;
+        modeButtonElements.forEach((button) => {
+          button.classList.toggle("active", button.dataset.mode === mode);
+        });
+        dailyControlElements.forEach((element) => {
+          element.classList.toggle("hidden", mode !== "daily");
+        });
+        historyChartStackElement.classList.toggle("hidden", mode !== "daily");
+        intradayChartStackElement.classList.toggle("hidden", mode !== "intraday");
+
+        if (mode === "intraday") {
+          stopIntradayPolling();
+          startIntradayPolling();
+        } else {
+          stopIntradayPolling();
+          fetchHistoricalBasisRates();
+        }
+      }
+
+      async function fetchHistoricalBasisRates() {
+        if (activeMode !== "daily") {
+          return;
+        }
+        const [startDate, endDate] = dateRange(activeDateRange);
+        const params = new URLSearchParams({
+          underlying: historyUnderlyingElement.value,
+          future_type: historyFutureTypeElement.value,
+        });
+        if (startDate) {
+          params.set("start_date", startDate);
+        }
+        if (endDate) {
+          params.set("end_date", endDate);
+        }
+
+        historyMessageElement.textContent = "Loading historical data...";
+        setHistoryLoading(true);
+        try {
+          const response = await fetch(`/api/history?${params.toString()}`);
+          const payload = await response.json();
+          if (!response.ok || payload.status !== "ok") {
+            throw new Error(payload.message || "Failed to fetch historical data.");
+          }
+          renderHistoryCharts(payload.rows);
+        } catch (error) {
+          purgeHistoryCharts();
+          historyMessageElement.textContent = error.message;
+        } finally {
+          setHistoryLoading(false);
+        }
+      }
+
+      async function fetchLatestBasisRates() {
+        try {
+          const response = await fetch("/api/latest");
+          const payload = await response.json();
+
+          if (!response.ok || payload.status === "error") {
+            throw new Error(payload.message || "Failed to fetch latest data.");
+          }
+          if (payload.status !== "ok") {
+            messageElement.className = "empty";
+            messageElement.textContent = payload.message || "Latest data unavailable.";
+            statusElement.textContent = "";
+            latestRefreshLabel = "";
+            return;
+          }
+
+          renderRows(payload.rows);
+          if (payload.rows.length) {
+            latestRefreshLabel = `Last refreshed: ${new Date().toLocaleString()}`;
+          } else {
+            latestRefreshLabel = "";
+          }
+          statusElement.textContent = formatLatestStatusLine();
+        } catch (error) {
+          rowsElement.innerHTML = "";
+          messageElement.className = "error";
+          messageElement.textContent = error.message;
+          statusElement.textContent = "";
+          latestRefreshLabel = "";
+        }
+      }
+
+      function pollLatestBasisRatesIfTrading() {
+        if (!isTradingSession()) {
+          if (latestRefreshLabel) {
+            statusElement.textContent = formatLatestStatusLine();
+          }
+          return;
+        }
+        fetchLatestBasisRates();
+      }
+
+      fetchLatestBasisRates();
+      setInterval(pollLatestBasisRatesIfTrading, 60000);
+
+      historyUnderlyingElement.addEventListener("change", () => {
+        if (activeMode === "daily") {
+          fetchHistoricalBasisRates();
+        } else {
+          startIntradayPolling();
+        }
+      });
+      historyFutureTypeElement.addEventListener("change", () => {
+        if (activeMode === "daily") {
+          fetchHistoricalBasisRates();
+        } else {
+          startIntradayPolling();
+        }
+      });
+      applyHistoryRangeElement.addEventListener("click", fetchHistoricalBasisRates);
+      modeButtonElements.forEach((button) => {
+        button.addEventListener("click", () => setAnalysisMode(button.dataset.mode));
+      });
+      dateRangeButtonElements.forEach((button) => {
+        button.addEventListener("click", () => {
+          activeDateRange = button.dataset.range;
+          dateRangeButtonElements.forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          customRangeRowElement.classList.toggle("visible", activeDateRange === "custom");
+          if (activeDateRange !== "custom") {
+            fetchHistoricalBasisRates();
+          }
+        });
+      });
+      fetchHistoricalBasisRates();
+    </script>
+  </body>
+</html>
